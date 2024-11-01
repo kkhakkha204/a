@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Stage, Layer, Image as KonvaImage, Transformer, Text } from 'react-konva';
-import { FaUpload, FaDownload } from 'react-icons/fa';
+import {FaUpload, FaDownload, FaBold, FaFont, FaItalic, FaUnderline} from 'react-icons/fa';
 import { RxAvatar } from "react-icons/rx";
+
 import { useImage } from 'react-konva-utils';
-import { MdFace } from "react-icons/md";
+import { MdFace, MdOutlineInstallMobile } from "react-icons/md";
+import { IoText } from "react-icons/io5";
+import {FaDeleteLeft} from "react-icons/fa6";
+import Konva from "konva";
 
 const GreetingCard = () => {
     const [dimensions, setDimensions] = useState({
@@ -77,14 +81,14 @@ const GreetingCard = () => {
 
                 // Tính tỷ lệ để mẫu thiệp vừa khít với màn hình
                 const scaleWidth = dimensions.width / imgWidth;
-                const scaleHeight = (dimensions.height - 64) / imgHeight;
+                const scaleHeight = (dimensions.height - 104) / imgHeight;
                 const minScale = Math.min(scaleWidth, scaleHeight);
                 setScale(minScale);
 
                 // Căn giữa stage dựa trên kích thước và tỷ lệ của ảnh
                 setOffset({
                     x: (dimensions.width - imgWidth * minScale) / 2,
-                    y: (dimensions.height - 64 - imgHeight * minScale) / 2,
+                    y: (dimensions.height - 104 - imgHeight * minScale) / 2,
                 });
             };
         }
@@ -186,8 +190,9 @@ const GreetingCard = () => {
         const newTextBox = {
             id: Date.now(),
             content: 'Nhập văn bản',
-            x: 670,
-            y: 700,
+            x: 200,
+            y: 200,
+            height:80,
             color: textColor,
             isBold: false,
             isItalic: false,
@@ -307,6 +312,7 @@ const GreetingCard = () => {
         }
     };
 
+
     useEffect(() => {
         if (selectedTextBox) {
             transformerTextRef.current.nodes([selectedTextBox.ref.current]);
@@ -318,14 +324,51 @@ const GreetingCard = () => {
         }
     }, [selectedTextBox]);
 
+    const [renderedImage, setRenderedImage] = useState(null);
+
+    const renderCanvasToPNG = () => {
+        const stage = stageRef.current;
+        if (stage) {
+            const originalImages = [];
+
+            stage.find('Image').forEach((imageNode) => {
+
+                const clonedImage = imageNode.clone();
+                originalImages.push(clonedImage);
+            });
+
+            const tempLayer = new Konva.Layer();
+
+            originalImages.forEach((imageNode) => {
+                imageNode.opacity(1);
+                tempLayer.add(imageNode);
+            });
+
+            stage.add(tempLayer);
+
+            const dataURL = tempLayer.toDataURL({ pixelRatio: 3 });
+            setRenderedImage(dataURL);
+
+            tempLayer.destroy();
+
+            stage.hide();
+        } else {
+            console.error("Stage is not available");
+        }
+    };
+
+
+
+
+
 
     return (
-        <div className="flex flex-col h-screen bg-gradient-to-b from-blue-500 via-purple-500 to-pink-500">
+        <div className="flex flex-col h-screen bg-gradient-to-tr from-violet-200 via-cyan-300 to-green-200 hover:bg-gradient-to-r">
             {/* Canvas Area */}
             <div className="flex-grow p-4">
                 <Stage
                     width={dimensions.width}
-                    height={dimensions.height - 64}
+                    height={dimensions.height - 104}
                     ref={stageRef}
                     x={offset.x}
                     scaleX={scale}
@@ -354,8 +397,9 @@ const GreetingCard = () => {
                                 width={imageDimensions.width}
                                 height={imageDimensions.height}
                                 listening={false}
-                                opacity={0.7}
                                 ref={imageRef}
+                                opacity={0.7}
+
                             />
                         )}
 
@@ -375,6 +419,7 @@ const GreetingCard = () => {
                                 text={box.content}
                                 x={box.x}
                                 y={box.y}
+                                height={box.height}
                                 fontSize={box.fontSize}
                                 fontFamily={box.fontFamily}
                                 fill={box.color || textColor}
@@ -382,6 +427,7 @@ const GreetingCard = () => {
                                 textDecoration={box.isUnderline ? 'underline' : ''}
                                 draggable
                                 onClick={() => handleTextClick(box)}
+                                onTap={() => handleTextClick(box)}
                                 ref={box.ref}
                             />
                         ))}
@@ -393,7 +439,7 @@ const GreetingCard = () => {
 
             {/* Text Edit Menu */}
             {isTextMenuOpen && (
-                <div className="bg-white bg-opacity-80 p-4 fixed top-0 left-0 right-0 z-20 shadow-lg backdrop-blur-md">
+                <div className="text-menu bg-white bg-opacity-80 p-4 fixed top-0 left-0 right-0 z-20 shadow-lg backdrop-blur-md">
                     <div className="flex items-center space-x-4">
                         <input
                             type="text"
@@ -403,13 +449,16 @@ const GreetingCard = () => {
                             className="p-2 border rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                         />
                         <button onClick={toggleBold}
-                                className={`ml-2 bg-orange-600 text-white px-4 py-2 rounded hover:bg-red-600 ${isTextBold ? 'font-bold' : ''}`}>B
+                                className={`ml-2 bg-orange-600 text-white px-4 py-2 rounded hover:bg-red-600 ${isTextBold ? 'font-bold' : ''}`}>
+                            <FaBold />
                         </button>
                         <button onClick={toggleItalic}
-                                className={`ml-2 bg-orange-600 text-white px-4 py-2 rounded hover:bg-red-600 ${isTextItalic ? 'italic' : ''}`}>I
+                                className={`ml-2 bg-orange-600 text-white px-4 py-2 rounded hover:bg-red-600 ${isTextItalic ? 'italic' : ''}`}>
+                            <FaItalic />
                         </button>
                         <button onClick={toggleUnderline}
-                                className={`ml-2 bg-orange-600 text-white px-4 py-2 rounded hover:bg-red-600 ${isTextUnderline ? 'underline' : ''}`}>U
+                                className={`ml-2 bg-orange-600 text-white px-4 py-2 rounded hover:bg-red-600 ${isTextUnderline ? 'underline' : ''}`}>
+                            <FaUnderline />
                         </button>
                         <input
                             type="number"
@@ -461,9 +510,9 @@ const GreetingCard = () => {
                         />
                         <button
                             onClick={deleteTextBox}
-                            className="ml-2 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+                            className="ml-2 bg-red-500 text-white px-4 py-3 rounded hover:bg-red-600"
                         >
-                            Xóa ô chữ
+                            <FaDeleteLeft />
                         </button>
                     </div>
                 </div>
@@ -484,10 +533,11 @@ const GreetingCard = () => {
             )}
 
             {/* Footer Menu */}
-            <div className="bg-gradient-to-r from-purple-950 via-gray-700 to-blue-900 p-4 fixed bottom-0 left-0 right-0 flex items-center justify-around text-white">
-                <label className="flex items-center cursor-pointer">
-                    <FaUpload className="mr-2" />
-                    Mẫu Thiệp
+            <div
+                className="bg-gradient-to-r from-fuchsia-900 via-cyan-700 to-teal-600 p-4 fixed bottom-0 left-0 right-0 flex items-center justify-around text-white">
+                <label className="flex flex-col items-center cursor-pointer">
+                    <FaUpload className="text-2xl mb-1"/>
+                    <span>Card</span>
                     <input
                         type="file"
                         accept="image/*"
@@ -496,9 +546,9 @@ const GreetingCard = () => {
                     />
                 </label>
 
-                <label className="flex items-center cursor-pointer">
-                    <MdFace className="mr-2" />
-                    Ảnh đại diện
+                <label className="flex flex-col items-center cursor-pointer">
+                    <MdFace className="text-2xl mb-1"/>
+                    Avatar
                     <input
                         type="file"
                         accept="image/*"
@@ -507,18 +557,34 @@ const GreetingCard = () => {
                     />
                 </label>
 
-                <button onClick={addTextBox} className="flex items-center cursor-pointer">
-                    <span className="mr-2">Thêm ô chữ</span>
+                <button onClick={addTextBox} className="flex flex-col items-center cursor-pointer">
+                    <IoText className="text-2xl mb-1"/>
+                    <span>Text</span>
+                </button>
+
+                <button
+                    onClick={renderCanvasToPNG}
+                    className="flex flex-col items-center cursor-pointer"
+                >
+                    <MdOutlineInstallMobile className="text-2xl mb-1"/>
+                    <span>Phone Download</span>
                 </button>
 
                 <button
                     onClick={handleDownload}
-                    className="flex items-center cursor-pointer"
+                    className="flex flex-col items-center cursor-pointer"
                 >
-                    <FaDownload className="mr-2" />
-                    Tải thiệp xuống
+                    <FaDownload className="text-2xl mb-1"/>
+                    <span>Download</span>
                 </button>
             </div>
+
+            {/* Hiển thị ảnh render ở giữa màn hình */}
+            {renderedImage && (
+                <div className="rendered-image-container flex justify-center items-center h-full">
+                    <img src={renderedImage} alt="Rendered" className="rendered-image" />
+                </div>
+            )}
         </div>
     );
 };

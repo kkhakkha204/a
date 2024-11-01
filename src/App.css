@@ -6,4 +6,25 @@
     transform: scale(0.95); /* Hiệu ứng khi nhấn */
 }
 
+.text-menu {
+    overflow-x: auto;
+    white-space: nowrap;
+}
+.rendered-image-container {
+    position: fixed; /* Giữ vị trí cố định */
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.9); /* Nền trắng với độ trong suốt */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000; /* Đảm bảo ảnh ở trên cùng */
+}
+
+.rendered-image {
+    max-width: 90%; /* Giới hạn chiều rộng để vừa màn hình */
+    max-height: 90%; /* Giới hạn chiều cao để vừa màn hình */
+}
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import GreetingCard from './GreetingCard';
+import './App.css';
 
 
 const App = () => {
