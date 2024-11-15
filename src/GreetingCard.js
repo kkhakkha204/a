@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Stage, Layer, Image as KonvaImage, Transformer, Text } from 'react-konva';
-import {FaUpload, FaDownload, FaBold, FaFont, FaItalic, FaUnderline} from 'react-icons/fa';
-import { RxAvatar } from "react-icons/rx";
-
+import { FaBold, FaItalic, FaUnderline, FaEdit} from 'react-icons/fa';
 import { useImage } from 'react-konva-utils';
-import { MdFace, MdOutlineInstallMobile } from "react-icons/md";
-import { IoText } from "react-icons/io5";
-import {FaDeleteLeft} from "react-icons/fa6";
+import {
+    MdFace,
+    MdInstallMobile,
+    MdOutlineInstallDesktop,
+    MdUploadFile,
+    MdOutlineTextFields,
+    MdDeleteForever,
+    MdEditSquare
+} from "react-icons/md";
 import Konva from "konva";
 
 const GreetingCard = () => {
@@ -15,12 +19,13 @@ const GreetingCard = () => {
         height: window.innerHeight,
     });
 
-    const [uploadedImage, setUploadedImage] = useState(null);
+    const stageRef = useRef(null);
+    const [scale, setScale] = useState(1);
+    const [offset, setOffset] = useState({ x: 0, y: 0 });
+
+    const [uploadedImage, setUploadedImage] = useState(localStorage.getItem('defaultCardTemplate') || null);
     const [image] = useImage(uploadedImage);
     const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
-    const [scale, setScale] = useState(1);
-    const stageRef = useRef(null);
-    const [offset, setOffset] = useState({ x: 0, y: 0 });
     const imageRef = useRef();
 
     const [avatarImage, setAvatarImage] = useState(null);
@@ -28,7 +33,7 @@ const GreetingCard = () => {
     const avatarRef = useRef(null);
     const transformerRef = useRef(null);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-
+    const [avatarDimensions, setAvatarDimensions] = useState({ width: 200, height: 200 });
 
     const [textBoxes, setTextBoxes] = useState([]);
     const [selectedTextBox, setSelectedTextBox] = useState(null);
@@ -142,6 +147,10 @@ const GreetingCard = () => {
             img.src = reader.result;
             img.onload = () => {
                 setAvatarImage(img);
+
+                // Tính tỷ lệ gốc của ảnh
+                const aspectRatio = img.width / img.height;
+                setAvatarDimensions({ width: 200, height: 200 / aspectRatio });
             };
         };
         reader.readAsDataURL(file);
@@ -325,45 +334,84 @@ const GreetingCard = () => {
     }, [selectedTextBox]);
 
     const [renderedImage, setRenderedImage] = useState(null);
+    const [isRenderedImageVisible, setIsRenderedImageVisible] = useState(false);
 
     const renderCanvasToPNG = () => {
         const stage = stageRef.current;
         if (stage) {
-            const originalImages = [];
+            const originalNodes = [];
 
+            // Clone các Image nodes
             stage.find('Image').forEach((imageNode) => {
-
                 const clonedImage = imageNode.clone();
-                originalImages.push(clonedImage);
+                originalNodes.push(clonedImage);
             });
 
+            // Clone các Text nodes
+            stage.find('Text').forEach((textNode) => {
+                const clonedText = textNode.clone();
+                originalNodes.push(clonedText);
+            });
+
+            // Tạo một tempLayer mới để chứa các node đã clone
             const tempLayer = new Konva.Layer();
 
-            originalImages.forEach((imageNode) => {
-                imageNode.opacity(1);
-                tempLayer.add(imageNode);
+            // Thêm tất cả các node đã clone vào tempLayer
+            originalNodes.forEach((node) => {
+                node.opacity(1);
+                tempLayer.add(node);
             });
 
-            stage.add(tempLayer);
+            // Lấy thông tin về avatar (ví dụ vị trí x, y và kích thước)
+            const avatarNode = stage.findOne('.avatar'); // Giả sử ảnh đại diện có class 'avatar'
+            const avatarX = avatarNode ? avatarNode.x() : 0;
+            const avatarY = avatarNode ? avatarNode.y() : 0;
+            const avatarWidth = avatarNode ? avatarNode.width() : 0;
+            const avatarHeight = avatarNode ? avatarNode.height() : 0;
 
+            // Tạo vùng clip sao cho không bao gồm ảnh đại diện
+            const canvasWidth = stage.width();
+            const canvasHeight = stage.height();
+
+            // Tính toán các giá trị clip, trừ phần ảnh đại diện
+            const clipX = 0;
+            const clipY = 0;
+            const clipWidth = canvasWidth;
+            const clipHeight = canvasHeight;
+
+            // Cắt phần ảnh đại diện ra ngoài
+            tempLayer.cache();
+            tempLayer.clip({
+                x: clipX,
+                y: clipY,
+                width: clipWidth,
+                height: clipHeight,
+            });
+
+            // Render thành data URL
             const dataURL = tempLayer.toDataURL({ pixelRatio: 3 });
             setRenderedImage(dataURL);
+            setIsRenderedImageVisible(true);
 
             tempLayer.destroy();
 
+            // Ẩn stage gốc sau khi render
             stage.hide();
         } else {
             console.error("Stage is not available");
         }
     };
 
-
-
+    const hideRenderedImage = () => {
+        setRenderedImage(null);
+        setIsRenderedImageVisible(false);
+        stageRef.current.show();
+    };
 
 
 
     return (
-        <div className="flex flex-col h-screen bg-gradient-to-tr from-violet-200 via-cyan-300 to-green-200 hover:bg-gradient-to-r">
+        <div className="flex flex-col h-screen bg-gradient-to-tr from-violet-200 via-cyan-300 to-green-200 hover:bg-gradient-to-r  ">
             {/* Canvas Area */}
             <div className="flex-grow p-4">
                 <Stage
@@ -376,13 +424,14 @@ const GreetingCard = () => {
                     onClick={handleStageClick}
                 >
                     <Layer>
+
                         {avatarImage && (
                             <KonvaImage
                                 image={avatarImage}
                                 x={300}
                                 y={200}
-                                width={200}
-                                height={200}
+                                width={avatarDimensions.width}  // Đặt kích thước đã tính theo tỷ lệ gốc
+                                height={avatarDimensions.height} // Đặt kích thước đã tính theo tỷ lệ gốc
                                 draggable
                                 onClick={handleAvatarClick}
                                 onTouchEnd={handleAvatarClick}
@@ -449,15 +498,15 @@ const GreetingCard = () => {
                             className="p-2 border rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
                         />
                         <button onClick={toggleBold}
-                                className={`ml-2 bg-orange-600 text-white px-4 py-2 rounded hover:bg-red-600 ${isTextBold ? 'font-bold' : ''}`}>
+                                className={`ml-2 bg-orange-600 text-white px-1 py-1.5 rounded hover:bg-red-600 ${isTextBold ? 'font-bold' : ''}`}>
                             <FaBold />
                         </button>
                         <button onClick={toggleItalic}
-                                className={`ml-2 bg-orange-600 text-white px-4 py-2 rounded hover:bg-red-600 ${isTextItalic ? 'italic' : ''}`}>
+                                className={`ml-2 bg-orange-600 text-white px-1 py-1.5 rounded hover:bg-red-600 ${isTextItalic ? 'italic' : ''}`}>
                             <FaItalic />
                         </button>
                         <button onClick={toggleUnderline}
-                                className={`ml-2 bg-orange-600 text-white px-4 py-2 rounded hover:bg-red-600 ${isTextUnderline ? 'underline' : ''}`}>
+                                className={`ml-2 bg-orange-600 text-white px-1 py-1.5 rounded hover:bg-red-600 ${isTextUnderline ? 'underline' : ''}`}>
                             <FaUnderline />
                         </button>
                         <input
@@ -465,7 +514,7 @@ const GreetingCard = () => {
                             value={inputFontSize}
                             onChange={handleInputFontSizeChange}
                             className="p-2 rounded shadow-sm ml-2"
-                            min={1} // Thay đổi theo nhu cầu của bạn
+                            min={10} // Thay đổi theo nhu cầu của bạn
                         />
                         <select
                             value={textFontSize}
@@ -510,9 +559,9 @@ const GreetingCard = () => {
                         />
                         <button
                             onClick={deleteTextBox}
-                            className="ml-2 bg-red-500 text-white px-4 py-3 rounded hover:bg-red-600"
+                            className="ml-2 bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
                         >
-                            <FaDeleteLeft />
+                            <MdDeleteForever style={{ fontSize: '1.5rem' }}/>
                         </button>
                     </div>
                 </div>
@@ -523,10 +572,10 @@ const GreetingCard = () => {
                 <div className="bg-white bg-opacity-80 p-4 fixed top-0 left-0 right-0 z-20 shadow-lg backdrop-blur-md">
                 <div className="flex justify-around">
                         <button
-                            className="text-red-500 hover:text-red-700 font-semibold"
+                            className="ml-2 bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
                             onClick={deleteAvatar}
                         >
-                            Xóa ảnh đại diện
+                            <MdDeleteForever style={{ fontSize: '1.5rem' }}/>
                         </button>
                     </div>
                 </div>
@@ -536,7 +585,7 @@ const GreetingCard = () => {
             <div
                 className="bg-gradient-to-r from-fuchsia-900 via-cyan-700 to-teal-600 p-4 fixed bottom-0 left-0 right-0 flex items-center justify-around text-white">
                 <label className="flex flex-col items-center cursor-pointer">
-                    <FaUpload className="text-2xl mb-1"/>
+                    <MdUploadFile className="text-2xl mb-1"/>
                     <span>Card</span>
                     <input
                         type="file"
@@ -558,7 +607,7 @@ const GreetingCard = () => {
                 </label>
 
                 <button onClick={addTextBox} className="flex flex-col items-center cursor-pointer">
-                    <IoText className="text-2xl mb-1"/>
+                    <MdOutlineTextFields className="text-2xl mb-1"/>
                     <span>Text</span>
                 </button>
 
@@ -566,15 +615,15 @@ const GreetingCard = () => {
                     onClick={renderCanvasToPNG}
                     className="flex flex-col items-center cursor-pointer"
                 >
-                    <MdOutlineInstallMobile className="text-2xl mb-1"/>
-                    <span>Phone Download</span>
+                    <MdInstallMobile className="text-2xl mb-1"/>
+                    <span>Download</span>
                 </button>
 
                 <button
                     onClick={handleDownload}
                     className="flex flex-col items-center cursor-pointer"
                 >
-                    <FaDownload className="text-2xl mb-1"/>
+                    <MdOutlineInstallDesktop className="text-2xl mb-1"/>
                     <span>Download</span>
                 </button>
             </div>
@@ -582,7 +631,14 @@ const GreetingCard = () => {
             {/* Hiển thị ảnh render ở giữa màn hình */}
             {renderedImage && (
                 <div className="rendered-image-container flex justify-center items-center h-full">
-                    <img src={renderedImage} alt="Rendered" className="rendered-image" />
+                    <img src={renderedImage} alt="Rendered" className="rendered-image"/>
+                    <button
+                        onClick={hideRenderedImage}
+                        className="ml-2 bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600"
+                    >
+                        <FaEdit style={{ fontSize: '1.5rem' }}/>
+                    </button>
+
                 </div>
             )}
         </div>
